@@ -1,79 +1,127 @@
 """Support for Hydrawise cloud."""
 from datetime import timedelta
-import logging
 
 from hydrawiser.core import Hydrawiser
 from requests.exceptions import ConnectTimeout, HTTPError
-import voluptuous as vol
 
-from homeassistant.components import persistent_notification
-from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
-import homeassistant.helpers.config_validation as cv
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.dispatcher import async_dispatcher_connect, dispatcher_send
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.event import track_time_interval
+from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue
 from homeassistant.helpers.typing import ConfigType
 
-_LOGGER = logging.getLogger(__name__)
-
-ALLOWED_WATERING_TIME = [5, 10, 15, 30, 45, 60]
-
-CONF_WATERING_TIME = "watering_minutes"
-
-NOTIFICATION_ID = "hydrawise_notification"
-NOTIFICATION_TITLE = "Hydrawise Setup"
-
-DATA_HYDRAWISE = "hydrawise"
-DOMAIN = "hydrawise"
-DEFAULT_WATERING_TIME = 15
-
-SCAN_INTERVAL = timedelta(seconds=120)
-
-SIGNAL_UPDATE_HYDRAWISE = "hydrawise_update"
-
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_ACCESS_TOKEN): cv.string,
-                vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
+from .const import (
+    _LOGGER,
+    CONF_ACCESS_TOKEN,
+    CONF_SCAN_INTERVAL,
+    DOMAIN,
+    SIGNAL_UPDATE_HYDRAWISE,
 )
 
+PLATFORMS = [Platform.SWITCH, Platform.BINARY_SENSOR, Platform.SENSOR]
 
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Hunter Hydrawise component."""
-    conf = config[DOMAIN]
-    access_token = conf[CONF_ACCESS_TOKEN]
-    scan_interval = conf.get(CONF_SCAN_INTERVAL)
+    # conf = config[DOMAIN]
+    # access_token = conf[CONF_ACCESS_TOKEN]
+    # scan_interval = conf.get(CONF_SCAN_INTERVAL)
+
+    # try:
+    #     hydrawise = Hydrawiser(user_token=access_token)
+    #     hass.data[DATA_HYDRAWISE] = HydrawiseHub(hydrawise)
+    # except (ConnectTimeout, HTTPError) as ex:
+    #     _LOGGER.error("Unable to connect to Hydrawise cloud service: %s", str(ex))
+    #     persistent_notification.async_create(
+    #         hass,
+    #         f"Error: {ex}<br />You will need to restart hass after fixing.",
+    #         title=NOTIFICATION_TITLE,
+    #         notification_id=NOTIFICATION_ID,
+    #     )
+    #     return False
+
+    # def hub_refresh(event_time):
+    #     """Call Hydrawise hub to refresh information."""
+    #     _LOGGER.debug("Updating Hydrawise Hub component")
+    #     hass.data[DATA_HYDRAWISE].data.update_controller_info()
+    #     dispatcher_send(hass, SIGNAL_UPDATE_HYDRAWISE)
+
+    # # Call the Hydrawise API to refresh updates
+    # track_time_interval(hass, hub_refresh, scan_interval)
+
+    # NEW CODE
+    # hass.data.setdefault(DOMAIN, {})
+    # hass.data[DOMAIN][SOURCE_IMPORT] = conf
+
+    # hass.async_create_task(
+    #     hass.config_entries.flow.async_init(
+    #         DOMAIN,
+    #         context={"source": SOURCE_IMPORT},
+    #         data=config,
+    #     )
+    # )
+
+    async_create_issue(
+        hass,
+        DOMAIN,
+        "deprecated_yaml",
+        breaks_in_ha_version="2023.6.0",
+        is_fixable=False,
+        severity=IssueSeverity.WARNING,
+        translation_key="deprecated_yaml",
+    )
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up the Hunter Hydrawise bridge."""
+
+    access_token = entry.data[CONF_ACCESS_TOKEN]
+    scan_interval_str = str(entry.data.get(CONF_SCAN_INTERVAL))
+    scan_interval = timedelta(seconds=float(scan_interval_str))
 
     try:
         hydrawise = Hydrawiser(user_token=access_token)
-        hass.data[DATA_HYDRAWISE] = HydrawiseHub(hydrawise)
+        hub = HydrawiseHub(hydrawise)
     except (ConnectTimeout, HTTPError) as ex:
         _LOGGER.error("Unable to connect to Hydrawise cloud service: %s", str(ex))
-        persistent_notification.create(
-            hass,
-            f"Error: {ex}<br />You will need to restart hass after fixing.",
-            title=NOTIFICATION_TITLE,
-            notification_id=NOTIFICATION_ID,
-        )
-        return False
+        # persistent_notification.async_create(
+        #     hass,
+        #     f"Error: {ex}<br />You will need to restart hass after fixing.",
+        #     title=NOTIFICATION_TITLE,
+        #     notification_id=NOTIFICATION_ID,
+        # )
+        raise ConfigEntryNotReady from ex
 
     def hub_refresh(event_time):
         """Call Hydrawise hub to refresh information."""
         _LOGGER.debug("Updating Hydrawise Hub component")
-        hass.data[DATA_HYDRAWISE].data.update_controller_info()
+        hass.data[DOMAIN].data.update_controller_info()
         dispatcher_send(hass, SIGNAL_UPDATE_HYDRAWISE)
 
     # Call the Hydrawise API to refresh updates
     track_time_interval(hass, hub_refresh, scan_interval)
 
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = hub
+
+    # Load platforms
+    # await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload Comfoconnect config entry."""
+
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
 
 
 class HydrawiseHub:

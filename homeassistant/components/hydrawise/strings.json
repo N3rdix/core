@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Set up your Hunter Hydrawise Irrigation controller.",
+        "data": {
+          "access_token": "[%key:common::config_flow::data::access_token%]",
+          "scan_interval": "Scan interval in seconds",
+          "watering_minutes": "Watering time in minutes"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_service%]"
+    }
+  },
+  "issues": {
+    "deprecated_yaml": {
+      "title": "The Hydrawise YAML configuration is being removed",
+      "description": "Configuring Hydrawise using YAML is being removed.\n\nYour existing YAML configuration has been imported into the UI automatically.\n\nRemove the Hydrawise YAML configuration from your configuration.yaml file and restart Home Assistant to fix this issue."
+    }
+  }
+}

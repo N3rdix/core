@@ -1,8 +1,6 @@
 """Support for Hydrawise sprinkler binary sensors."""
 from __future__ import annotations
 
-import logging
-
 import voluptuous as vol
 
 from homeassistant.components.binary_sensor import (
@@ -11,15 +9,15 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_MONITORED_CONDITIONS
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import DATA_HYDRAWISE, HydrawiseEntity
-
-_LOGGER = logging.getLogger(__name__)
+from . import HydrawiseEntity
+from .const import _LOGGER, DATA_HYDRAWISE, DOMAIN
 
 BINARY_SENSOR_STATUS = BinarySensorEntityDescription(
     key="status",
@@ -48,33 +46,53 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def setup_platform(
+async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
+    async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up a sensor for a Hydrawise device."""
-    hydrawise = hass.data[DATA_HYDRAWISE].data
-    monitored_conditions = config[CONF_MONITORED_CONDITIONS]
 
-    entities = []
-    if BINARY_SENSOR_STATUS.key in monitored_conditions:
-        entities.append(
-            HydrawiseBinarySensor(hydrawise.current_controller, BINARY_SENSOR_STATUS)
-        )
+    # ###CREATE ISSUE
 
-    # create a sensor for each zone
-    entities.extend(
+    # hydrawise = hass.data[DATA_HYDRAWISE].data
+    # monitored_conditions = config[CONF_MONITORED_CONDITIONS]
+
+    # entities = []
+    # if BINARY_SENSOR_STATUS.key in monitored_conditions:
+    #     entities.append(
+    #         HydrawiseBinarySensor(hydrawise.current_controller, BINARY_SENSOR_STATUS)
+    #     )
+
+    # # create a sensor for each zone
+    # entities.extend(
+    #     [
+    #         HydrawiseBinarySensor(zone, description)
+    #         for zone in hydrawise.relays
+    #         for description in BINARY_SENSOR_TYPES
+    #         if description.key in monitored_conditions
+    #     ]
+    # )
+
+    # async_add_entities(entities, True)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up the ComfoConnect sensor platform."""
+    hub = hass.data[DOMAIN][entry.entry_id]
+
+    async_add_entities(
         [
-            HydrawiseBinarySensor(zone, description)
-            for zone in hydrawise.relays
+            HydrawiseBinarySensor(hub, description)
             for description in BINARY_SENSOR_TYPES
-            if description.key in monitored_conditions
-        ]
+        ],
+        True,
     )
-
-    add_entities(entities, True)
 
 
 class HydrawiseBinarySensor(HydrawiseEntity, BinarySensorEntity):
