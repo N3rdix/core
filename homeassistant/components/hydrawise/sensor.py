@@ -1,26 +1,21 @@
 """Support for Hydrawise sprinkler sensors."""
 from __future__ import annotations
 
-import logging
-
-import voluptuous as vol
-
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_MONITORED_CONDITIONS, UnitOfTime
 from homeassistant.core import HomeAssistant
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt
 
-from . import DATA_HYDRAWISE, HydrawiseEntity
-
-_LOGGER = logging.getLogger(__name__)
+from . import HydrawiseEntity
+from .const import _LOGGER, DOMAIN, cv, vol
 
 SENSOR_TYPES: tuple[SensorEntityDescription, ...] = (
     SensorEntityDescription(
@@ -47,27 +42,46 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 TWO_YEAR_SECONDS = 60 * 60 * 24 * 365 * 2
-WATERING_TIME_ICON = "mdi:water-pump"
+# WATERING_TIME_ICON = "mdi:water-pump"
 
 
-def setup_platform(
+async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
+    async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up a sensor for a Hydrawise device."""
-    hydrawise = hass.data[DATA_HYDRAWISE].data
-    monitored_conditions = config[CONF_MONITORED_CONDITIONS]
+    # hydrawise = hass.data[DATA_HYDRAWISE].data
+    # monitored_conditions = config[CONF_MONITORED_CONDITIONS]
 
-    entities = [
-        HydrawiseSensor(zone, description)
-        for zone in hydrawise.relays
-        for description in SENSOR_TYPES
-        if description.key in monitored_conditions
-    ]
+    # entities = [
+    #     HydrawiseSensor(zone, description)
+    #     for zone in hydrawise.relays
+    #     for description in SENSOR_TYPES
+    #     if description.key in monitored_conditions
+    # ]
 
-    add_entities(entities, True)
+    # async_add_entities(entities, True)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up a sensor for a Hydrawise device."""
+    hydrawise = hass.data[DOMAIN][entry.entry_id].data
+
+    # For user input from config flow
+    async_add_entities(
+        [
+            HydrawiseSensor(hydrawise, description)
+            for zone in hydrawise.relays
+            for description in SENSOR_TYPES
+        ],
+        True,
+    )
 
 
 class HydrawiseSensor(HydrawiseEntity, SensorEntity):
@@ -75,7 +89,7 @@ class HydrawiseSensor(HydrawiseEntity, SensorEntity):
 
     def update(self) -> None:
         """Get the latest data and updates the states."""
-        mydata = self.hass.data[DATA_HYDRAWISE].data
+        mydata = self.hass.data[DOMAIN].data
         _LOGGER.debug("Updating Hydrawise sensor: %s", self.name)
         relay_data = mydata.relays[self.data["relay"] - 1]
         if self.entity_description.key == "watering_time":

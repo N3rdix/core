@@ -1,10 +1,7 @@
 """Support for Hydrawise cloud switches."""
 from __future__ import annotations
 
-import logging
 from typing import Any
-
-import voluptuous as vol
 
 from homeassistant.components.switch import (
     PLATFORM_SCHEMA,
@@ -12,21 +9,23 @@ from homeassistant.components.switch import (
     SwitchEntity,
     SwitchEntityDescription,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_MONITORED_CONDITIONS
 from homeassistant.core import HomeAssistant
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from . import (
+from . import HydrawiseEntity
+from .const import (
+    _LOGGER,
     ALLOWED_WATERING_TIME,
     CONF_WATERING_TIME,
     DATA_HYDRAWISE,
     DEFAULT_WATERING_TIME,
-    HydrawiseEntity,
+    DOMAIN,
+    cv,
+    vol,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 SWITCH_TYPES: tuple[SwitchEntityDescription, ...] = (
     SwitchEntityDescription(
@@ -55,25 +54,44 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 )
 
 
-def setup_platform(
+async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
+    async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up a sensor for a Hydrawise device."""
-    hydrawise = hass.data[DATA_HYDRAWISE].data
-    monitored_conditions = config[CONF_MONITORED_CONDITIONS]
-    default_watering_timer = config[CONF_WATERING_TIME]
+    # hydrawise = hass.data[DATA_HYDRAWISE].data
+    # monitored_conditions = config[CONF_MONITORED_CONDITIONS]
+    # default_watering_timer = config[CONF_WATERING_TIME]
 
-    entities = [
-        HydrawiseSwitch(zone, description, default_watering_timer)
-        for zone in hydrawise.relays
-        for description in SWITCH_TYPES
-        if description.key in monitored_conditions
-    ]
+    # entities = [
+    #     HydrawiseSwitch(zone, description, default_watering_timer)
+    #     for zone in hydrawise.relays
+    #     for description in SWITCH_TYPES
+    #     if description.key in monitored_conditions
+    # ]
 
-    add_entities(entities, True)
+    # async_add_entities(entities, True)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up a sensor for a Hydrawise device."""
+    hydrawise = hass.data[DOMAIN][entry.entry_id].data
+    default_watering_timer = hydrawise[CONF_WATERING_TIME]
+
+    async_add_entities(
+        [
+            HydrawiseSwitch(hydrawise, description, default_watering_timer)
+            for zone in hydrawise.relays
+            for description in SWITCH_TYPES
+        ],
+        True,
+    )
 
 
 class HydrawiseSwitch(HydrawiseEntity, SwitchEntity):
