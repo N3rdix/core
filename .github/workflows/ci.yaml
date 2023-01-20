@@ -18,6 +18,14 @@ on:
         description: "Skip pytest"
         default: false
         type: boolean
+      pylint-only:
+        description: "Only run pylint"
+        default: false
+        type: boolean
+      mypy-only:
+        description: "Only run mypy"
+        default: false
+        type: boolean
 
 env:
   CACHE_VERSION: 3
@@ -163,6 +171,9 @@ jobs:
   pre-commit:
     name: Prepare pre-commit base
     runs-on: ubuntu-20.04
+    if: |
+      github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
     needs:
       - info
     steps:
@@ -170,7 +181,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
           check-latest: true
@@ -213,7 +224,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -267,7 +278,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -324,7 +335,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -370,7 +381,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
@@ -498,7 +509,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
@@ -554,6 +565,9 @@ jobs:
   hassfest:
     name: Check hassfest
     runs-on: ubuntu-20.04
+    if: |
+      github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
     needs:
       - info
       - base
@@ -562,7 +576,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
           check-latest: true
@@ -587,6 +601,9 @@ jobs:
   gen-requirements-all:
     name: Check all requirements
     runs-on: ubuntu-20.04
+    if: |
+      github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
     needs:
       - info
       - base
@@ -595,7 +612,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
           check-latest: true
@@ -621,6 +638,9 @@ jobs:
     name: Check pylint
     runs-on: ubuntu-20.04
     timeout-minutes: 20
+    if: |
+      github.event.inputs.mypy-only != 'true'
+      || github.event.inputs.pylint-only == 'true'
     needs:
       - info
       - base
@@ -629,7 +649,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
           check-latest: true
@@ -666,6 +686,9 @@ jobs:
   mypy:
     name: Check mypy
     runs-on: ubuntu-20.04
+    if: |
+      github.event.inputs.pylint-only != 'true'
+      || github.event.inputs.mypy-only == 'true'
     needs:
       - info
       - base
@@ -674,7 +697,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
           check-latest: true
@@ -710,6 +733,9 @@ jobs:
 
   pip-check:
     runs-on: ubuntu-20.04
+    if: |
+      github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
     needs:
       - info
       - base
@@ -723,7 +749,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
@@ -750,6 +776,8 @@ jobs:
     if: |
       (github.event_name != 'push' || github.event.repository.full_name == 'home-assistant/core')
       && github.event.inputs.lint-only != 'true'
+      && github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
       && (needs.info.outputs.test_full_suite == 'true' || needs.info.outputs.tests_glob)
     needs:
       - info
@@ -778,7 +806,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
@@ -873,6 +901,8 @@ jobs:
     if: |
       (github.event_name != 'push' || github.event.repository.full_name == 'home-assistant/core')
       && github.event.inputs.lint-only != 'true'
+      && github.event.inputs.pylint-only != 'true'
+      && github.event.inputs.mypy-only != 'true'
       && needs.info.outputs.test_full_suite == 'true'
     needs:
       - info
@@ -901,7 +931,7 @@ jobs:
         uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@v4.4.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ matrix.python-version }}
           check-latest: true
