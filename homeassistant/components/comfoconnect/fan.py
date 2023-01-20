@@ -53,7 +53,11 @@ async def async_setup_platform(
     """Set up the ComfoConnect fan platform."""
 
     # Remove the artificial entry since it's no longer needed.
-    hass.data[DOMAIN].pop(SOURCE_IMPORT, None)
+    try:
+        hass.data[DOMAIN].pop(SOURCE_IMPORT, None)
+    except KeyError:
+        pass
+
     return
 
 
@@ -65,7 +69,10 @@ async def async_setup_entry(
     """Set up the ComfoConnect fan platform."""
     ccb = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities([ComfoConnectFan(ccb)], True)
+    try:
+        async_add_entities([ComfoConnectFan(ccb)], True)
+    except ValueError:
+        return
 
 
 class ComfoConnectFan(FanEntity):
