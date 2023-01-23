@@ -1,6 +1,4 @@
 """Support to control a Zehnder ComfoAir Q350/450/600 ventilation unit."""
-import logging
-
 from pycomfoconnect import Bridge, ComfoConnect
 import voluptuous as vol
 
@@ -18,20 +16,16 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.dispatcher import dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
-_LOGGER = logging.getLogger(__name__)
-
-DOMAIN = "comfoconnect"
-
-SIGNAL_COMFOCONNECT_UPDATE_RECEIVED = "comfoconnect_update_received_{}"
-
-CONF_USER_AGENT = "user_agent"
-
-DEFAULT_NAME = "ComfoAirQ"
-DEFAULT_PIN = 0
-DEFAULT_TOKEN = "00000000000000000000000000000001"
-DEFAULT_USER_AGENT = "Home Assistant"
-
-DEVICE = None
+from .const import (
+    _LOGGER,
+    CONF_USER_AGENT,
+    DEFAULT_NAME,
+    DEFAULT_PIN,
+    DEFAULT_TOKEN,
+    DEFAULT_USER_AGENT,
+    DOMAIN,
+    SIGNAL_COMFOCONNECT_UPDATE_RECEIVED,
+)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -51,8 +45,11 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ComfoConnect bridge."""
+
+    if DOMAIN not in config:
+        return True
 
     conf = config[DOMAIN]
     host = conf[CONF_HOST]
@@ -80,10 +77,12 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     def _shutdown(_event):
         ccb.disconnect()
 
-    hass.bus.listen_once(EVENT_HOMEASSISTANT_STOP, _shutdown)
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _shutdown)
 
     # Load platforms
-    discovery.load_platform(hass, Platform.FAN, DOMAIN, {}, config)
+    hass.async_create_task(
+        discovery.async_load_platform(hass, Platform.FAN, DOMAIN, {}, config)
+    )
 
     return True
 

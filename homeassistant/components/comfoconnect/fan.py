@@ -1,7 +1,6 @@
 """Platform to control a Zehnder ComfoAir Q350/450/600 ventilation unit."""
 from __future__ import annotations
 
-import logging
 import math
 from typing import Any
 
@@ -27,9 +26,8 @@ from homeassistant.util.percentage import (
     ranged_value_to_percentage,
 )
 
-from . import DOMAIN, SIGNAL_COMFOCONNECT_UPDATE_RECEIVED, ComfoConnectBridge
-
-_LOGGER = logging.getLogger(__name__)
+from . import ComfoConnectBridge
+from .const import _LOGGER, DOMAIN, SIGNAL_COMFOCONNECT_UPDATE_RECEIVED
 
 CMD_MAPPING = {
     0: CMD_FAN_MODE_AWAY,
@@ -44,16 +42,16 @@ PRESET_MODE_AUTO = "auto"
 PRESET_MODES = [PRESET_MODE_AUTO]
 
 
-def setup_platform(
+async def async_setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
-    add_entities: AddEntitiesCallback,
+    async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the ComfoConnect fan platform."""
     ccb = hass.data[DOMAIN]
 
-    add_entities([ComfoConnectFan(ccb)], True)
+    async_add_entities([ComfoConnectFan(ccb)], True)
 
 
 class ComfoConnectFan(FanEntity):
