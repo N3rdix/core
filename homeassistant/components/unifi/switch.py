@@ -17,6 +17,7 @@ from aiounifi.interfaces.clients import Clients
 from aiounifi.interfaces.dpi_restriction_groups import DPIRestrictionGroups
 from aiounifi.interfaces.outlets import Outlets
 from aiounifi.interfaces.ports import Ports
+from aiounifi.interfaces.wlans import Wlans
 from aiounifi.models.api import ApiItemT
 from aiounifi.models.client import Client, ClientBlockRequest
 from aiounifi.models.device import (
@@ -28,6 +29,7 @@ from aiounifi.models.dpi_restriction_group import DPIRestrictionGroup
 from aiounifi.models.event import Event, EventKey
 from aiounifi.models.outlet import Outlet
 from aiounifi.models.port import Port
+from aiounifi.models.wlan import Wlan, WlanEnableRequest
 
 from homeassistant.components.switch import (
     DOMAIN,
@@ -96,6 +98,18 @@ def async_dpi_group_device_info_fn(api: aiounifi.Controller, obj_id: str) -> Dev
     )
 
 
+@callback
+def async_ssid_device_info_fn(api: aiounifi.Controller, obj_id: str) -> DeviceInfo:
+    """Create device registry entry for SSID."""
+    return DeviceInfo(
+        entry_type=DeviceEntryType.SERVICE,
+        identifiers={(DOMAIN, f"unifi_controller_{obj_id}")},
+        manufacturer=ATTR_MANUFACTURER,
+        model="UniFi Network",
+        name="UniFi Network",
+    )
+
+
 async def async_block_client_control_fn(
     api: aiounifi.Controller, obj_id: str, target: bool
 ) -> None:
@@ -133,6 +147,15 @@ async def async_poe_port_control_fn(
     device = api.devices[mac]
     state = "auto" if target else "off"
     await api.request(DeviceSetPoePortModeRequest.create(device, int(index), state))
+
+
+async def async_ssid_control_fn(
+    api: aiounifi.Controller, obj_id: str, target: bool
+) -> None:
+    """Control ssid state."""
+    # mac, _, index = obj_id.partition("_")
+    device = api.wlans[obj_id]
+    await api.request(WlanEnableRequest.create(device.name, device.enabled))
 
 
 @dataclass
@@ -230,6 +253,26 @@ ENTITY_DESCRIPTIONS: tuple[UnifiSwitchEntityDescription, ...] = (
         object_fn=lambda api, obj_id: api.ports[obj_id],
         supported_fn=lambda controller, obj_id: controller.api.ports[obj_id].port_poe,
         unique_id_fn=lambda controller, obj_id: f"{obj_id.split('_', 1)[0]}-poe-{obj_id.split('_', 1)[1]}",
+    ),
+    UnifiSwitchEntityDescription[Wlans, Wlan](
+        key="SSID control",
+        device_class=SwitchDeviceClass.SWITCH,
+        entity_category=EntityCategory.CONFIG,
+        has_entity_name=True,
+        entity_registry_enabled_default=False,
+        icon="mdi:wifi",
+        allowed_fn=lambda controller, obj_id: True,
+        api_handler_fn=lambda api: api.wlans,
+        available_fn=lambda controller, obj_id: controller.available,
+        control_fn=async_ssid_control_fn,
+        device_info_fn=async_ssid_device_info_fn,
+        event_is_on=None,
+        event_to_subscribe=None,
+        is_on_fn=lambda controller, wlan: wlan.enabled is True,
+        name_fn=lambda wlan: f"{wlan.name}",
+        object_fn=lambda api, obj_id: api.wlans[obj_id],
+        supported_fn=lambda controller, obj_id: bool(controller.api.wlans[obj_id]),
+        unique_id_fn=lambda controller, obj_id: f"ssid-{obj_id}",
     ),
 )
 
